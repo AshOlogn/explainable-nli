@@ -1,6 +1,6 @@
 import torch
 import argparse
-from dataloaders import ESNLIDataset
+from dataloaders import ANLIDataset, ESNLIDataset
 from transformers import RobertaForSequenceClassification, AdamW
 from os import mkdir, system
 from os.path import isdir
@@ -17,12 +17,19 @@ def get_iter_indices(batch_size, length):
         i = min(i+batch_size, length)
     return indices
 
+DATASET_TO_CLASS = {
+    'esnli': (lambda split,device: ESNLIDataset(split, device)),
+    'anli-1': (lambda split,device: ANLIDataset('R1', split, device)),
+    'anli-2': (lambda split,device: ANLIDataset('R2', split, device)),
+    'anli-3': (lambda split,device: ANLIDataset('R3', split, device))
+}
+
 def train(args):
     model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3).to(args.device)
     model.train()
 
-    train_dataset = ESNLIDataset('train', args.device)
-    dev_dataset = ESNLIDataset('dev', args.device)
+    train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.device)
+    dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.device)
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
 
@@ -113,6 +120,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='train', choices=['train', 'predict'], required=False)
+    parser.add_argument('--dataset', type=str, default='esnli', choices=['esnli', 'anli-1', 'anli-2', 'anli-3'], required=False)
     parser.add_argument('--device', type=str, default='cuda', choices=['cpu', 'cuda'], required=False)
     parser.add_argument('--learning_rate', type=float, default=3e-5, required=False)
     parser.add_argument('--batch_size', type=int, default=16, required=False)

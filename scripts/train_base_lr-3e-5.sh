@@ -9,11 +9,13 @@
 #SBATCH --mail-user=ashwin.devaraj@utexas.edu
 #SBATCH --mail-type=ALL
 
+export DATASET=anli-1
 export BATCH_SIZE=16
 export LR=3e-5
 
 python -u models/base_roberta.py \
 --task=train \
+--dataset=$DATASET \
 --batch_size=$BATCH_SIZE \
 --device=cuda \
 --learning_rate=$LR \
