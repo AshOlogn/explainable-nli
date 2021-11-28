@@ -1,13 +1,13 @@
 import torch
 import argparse
 from dataloaders import ANLIDataset, ESNLIDataset
-from transformers import RobertaForSequenceClassification, AdamW
+from transformers import BartForSequenceClassification, AdamW
 from os import mkdir, system
 from os.path import isdir
 from tqdm import tqdm
 
 def get_dirname(args):
-    return f'trained_models/roberta_base_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
+    return f'trained_models/bart_base_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
 
 def get_iter_indices(batch_size, length):
     indices = []
@@ -18,14 +18,14 @@ def get_iter_indices(batch_size, length):
     return indices
 
 DATASET_TO_CLASS = {
-    'esnli': (lambda split,device: ESNLIDataset(split, 'roberta', device)),
-    'anli-1': (lambda split,device: ANLIDataset('R1', split, 'roberta', device)),
-    'anli-2': (lambda split,device: ANLIDataset('R2', split, 'roberta', device)),
-    'anli-3': (lambda split,device: ANLIDataset('R3', split, 'roberta', device))
+    'esnli': (lambda split,device: ESNLIDataset(split, 'bart', device)),
+    'anli-1': (lambda split,device: ANLIDataset('R1', split, 'bart', device)),
+    'anli-2': (lambda split,device: ANLIDataset('R2', split, 'bart', device)),
+    'anli-3': (lambda split,device: ANLIDataset('R3', split, 'bart', device))
 }
 
 def train(args):
-    model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3).to(args.device)
+    model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3).to(args.device)
     model.train()
 
     train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.device)
@@ -55,7 +55,6 @@ def train(args):
                 model.eval()
                 n_f1, e_f1, c_f1, m_f1, acc = evaluate(model, dev_dataset, args.batch_size)
                 print(f'N F1 - {n_f1*100:.1f}%, E F1 - {e_f1*100:.1f}%, C F1 - {c_f1*100:.1f}, Mean F1 - {m_f1*100:.1f}, Accuracy - {acc*100:.1f}%')
-                # torch.save(model.state_dict(), f'{dirname}/model_epoch-{e+1}_steps-{steps}_acc-{acc*100:.1f}.pt')
                 model.train()
 
             i = j

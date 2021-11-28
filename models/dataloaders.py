@@ -1,13 +1,16 @@
 import json
 import torch
 import random
-from transformers import RobertaTokenizer
+from transformers import RobertaTokenizer, BartTokenizer
 from torch.utils.data import Dataset
 
 class ESNLIDataset(Dataset):
-    def __init__(self, split, device):
+    def __init__(self, split, model, device):
         data = json.load(open(f'data/esnli/{split}.json'))
-        self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        if model == 'roberta':
+            self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        elif model == 'bart':
+            self.tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
         self.X = [example['premise'] + ' </s> ' + example['hypothesis'] for example in data]
         self.y_expl = [example['explanation' if split=='train' else 'explanations'] for example in data]
         self.y_label = [example['label'] for example in data]
@@ -32,9 +35,12 @@ class ESNLIDataset(Dataset):
 
 
 class ANLIDataset(Dataset):
-    def __init__(self, level, split, device):
+    def __init__(self, level, split, model, device):
         data = json.load(open(f'data/anli/{level}/{split}.json'))
-        self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        if model == 'roberta':
+            self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
+        elif model == 'bart':
+            self.tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
         self.X = [example['premise'] + ' </s> ' + example['hypothesis'] for example in data]
         self.y_expl = [example['explanation'] for example in data]
         self.y_label = [example['label'] for example in data]
