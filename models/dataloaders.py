@@ -20,7 +20,7 @@ class ESNLIDataset(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx):
-        batch = self.tokenizer(self.X[idx], padding='max_length', return_tensors='pt')
+        batch = self.tokenizer(self.X[idx], padding='longest', return_tensors='pt')
         batch['input_ids'] = batch['input_ids'].to(self.device)
         batch['attention_mask'] = batch['attention_mask'].to(self.device)
         batch['labels'] = torch.LongTensor(self.y_label[idx]).to(self.device)
@@ -50,7 +50,7 @@ class ANLIDataset(Dataset):
         return len(self.X)
 
     def __getitem__(self, idx):
-        batch = self.tokenizer(self.X[idx], padding='max_length', return_tensors='pt')
+        batch = self.tokenizer(self.X[idx], padding='longest', return_tensors='pt')
         batch['input_ids'] = batch['input_ids'].to(self.device)
         batch['attention_mask'] = batch['attention_mask'].to(self.device)
         batch['labels'] = torch.LongTensor(self.y_label[idx]).to(self.device)
