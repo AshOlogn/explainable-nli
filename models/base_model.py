@@ -1,13 +1,13 @@
 import torch
 import argparse
 from dataloaders import ANLIDataset, ESNLIDataset
-from transformers import BartForSequenceClassification, AdamW
+from transformers import RobertaForSequenceClassification, BartForSequenceClassification, AdamW
 from os import mkdir, system
 from os.path import isdir
 from tqdm import tqdm
 
 def get_dirname(args):
-    return f'trained_models/bart_base_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
+    return f'trained_models/{args.model}_base_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
 
 def get_iter_indices(batch_size, length):
     indices = []
@@ -18,18 +18,21 @@ def get_iter_indices(batch_size, length):
     return indices
 
 DATASET_TO_CLASS = {
-    'esnli': (lambda split,device: ESNLIDataset(split, 'bart', device)),
-    'anli-1': (lambda split,device: ANLIDataset('R1', split, 'bart', device)),
-    'anli-2': (lambda split,device: ANLIDataset('R2', split, 'bart', device)),
-    'anli-3': (lambda split,device: ANLIDataset('R3', split, 'bart', device))
+    'esnli': (lambda split,model,device: ESNLIDataset(split, model, device)),
+    'anli-1': (lambda split,model,device: ANLIDataset('R1', split, model, device)),
+    'anli-2': (lambda split,model,device: ANLIDataset('R2', split, model, device)),
+    'anli-3': (lambda split,model,device: ANLIDataset('R3', split, model, device))
 }
 
 def train(args):
-    model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3).to(args.device)
+    if args.model == 'bart':
+        model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3).to(args.device)
+    elif args.model == 'roberta':
+        model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3).to(args.device)
     model.train()
 
-    train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.device)
-    dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.device)
+    train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.model, args.device)
+    dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.model, args.device)
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
 
@@ -119,6 +122,7 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='train', choices=['train', 'predict'], required=False)
+    parser.add_argument('--model', type=str, default='bart', choices=['bart', 'roberta'], required=False)
     parser.add_argument('--dataset', type=str, default='esnli', choices=['esnli', 'anli-1', 'anli-2', 'anli-3'], required=False)
     parser.add_argument('--device', type=str, default='cuda', choices=['cpu', 'cuda'], required=False)
     parser.add_argument('--learning_rate', type=float, default=3e-5, required=False)
