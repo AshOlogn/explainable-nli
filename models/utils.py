@@ -1,4 +1,5 @@
 import torch
+from expl_bart import BartForExplanatoryNLI
 
 def get_iter_indices(batch_size, length):
     indices = []
@@ -16,10 +17,14 @@ def get_predictions(model, dataset, batch_size):
     for i in indices:
         j = min(i+batch_size, len(dataset))
         batch = dataset[i:j]
-        del batch['labels']
-        logits = model(**batch)[0]
+        if isinstance(model, BartForExplanatoryNLI):
+            del batch['classification_labels']
+            del batch['explanation_labels']
+            logits = model(**batch).classification_logits
+        else:
+            del batch['labels']
+            logits = model(**batch).logits
         preds.append(torch.argmax(logits, dim=-1).to('cpu'))
-
     preds = torch.cat(preds)
     return preds
 
