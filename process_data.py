@@ -5,7 +5,7 @@ def format_esnli(split='train'):
     if split == 'train':
         df1 = pd.read_csv('data/esnli/raw/esnli_train_1.csv')
         df2 = pd.read_csv('data/esnli/raw/esnli_train_2.csv')
-        df = pd.concat([df1, df2]).dropna(subset=['Sentence2'])
+        df = pd.concat([df1, df2]).dropna()
         data = [{
             'id': pair_id,
             'premise': sentence1,
@@ -15,7 +15,7 @@ def format_esnli(split='train'):
         } for (pair_id, sentence1, sentence2, label, explanation) in 
             zip(df['pairID'], df['Sentence1'], df['Sentence2'], df['gold_label'], df['Explanation_1'])]
     else:
-        df = pd.read_csv(f'data/esnli/raw/esnli_{split}.csv').dropna(subset=['Sentence2'])
+        df = pd.read_csv(f'data/esnli/raw/esnli_{split}.csv').dropna()
         data = [{
             'id': pair_id,
             'premise': sentence1,

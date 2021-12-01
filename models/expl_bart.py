@@ -51,6 +51,32 @@ class BartForExplanatoryNLI(BartPretrainedModel):
         self.lm_head = nn.Linear(config.d_model, self.model.shared.num_embeddings, bias=False)
         self.init_weights()
 
+    def get_encoder(self):
+        return self.model.get_encoder()
+
+    def get_decoder(self):
+        return self.model.get_decoder()
+
+    def resize_token_embeddings(self, new_num_tokens: int) -> nn.Embedding:
+        new_embeddings = super().resize_token_embeddings(new_num_tokens)
+        self._resize_final_logits_bias(new_num_tokens)
+        return new_embeddings
+
+    def _resize_final_logits_bias(self, new_num_tokens: int) -> None:
+        old_num_tokens = self.final_logits_bias.shape[-1]
+        if new_num_tokens <= old_num_tokens:
+            new_bias = self.final_logits_bias[:, :new_num_tokens]
+        else:
+            extra_bias = torch.zeros((1, new_num_tokens - old_num_tokens), device=self.final_logits_bias.device)
+            new_bias = torch.cat([self.final_logits_bias, extra_bias], dim=1)
+        self.register_buffer("final_logits_bias", new_bias)
+
+    def get_output_embeddings(self):
+        return self.lm_head
+
+    def set_output_embeddings(self, new_embeddings):
+        self.lm_head = new_embeddings
+
     def forward(
         self,
         input_ids=None,
@@ -61,6 +87,7 @@ class BartForExplanatoryNLI(BartPretrainedModel):
         decoder_head_mask=None,
         cross_attn_head_mask=None,
         encoder_outputs=None,
+        past_key_values=None,
         inputs_embeds=None,
         decoder_inputs_embeds=None,
         classification_labels=None,
@@ -113,17 +140,20 @@ class BartForExplanatoryNLI(BartPretrainedModel):
         ###   Classification   ###
         ##########################
 
-        eos_mask = input_ids.eq(self.config.eos_token_id)
-
-        if len(torch.unique_consecutive(eos_mask.sum(1))) > 1:
-            raise ValueError("All examples must have the same number of <eos> tokens.")
-        sentence_representation = encoder_hidden_states[eos_mask, :].view(encoder_hidden_states.size(0), -1, encoder_hidden_states.size(-1))[:,-1,:]
-        classification_logits = self.classification_head(sentence_representation)
-
         classification_loss = None
-        if classification_labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
-            classification_loss = loss_fct(classification_logits.view(-1, self.config.num_labels), classification_labels.view(-1))
+        classification_logits = None
+
+        if input_ids is not None:
+            eos_mask = input_ids.eq(self.config.eos_token_id)
+
+            if len(torch.unique_consecutive(eos_mask.sum(1))) > 1:
+                raise ValueError("All examples must have the same number of <eos> tokens.")
+            sentence_representation = encoder_hidden_states[eos_mask, :].view(encoder_hidden_states.size(0), -1, encoder_hidden_states.size(-1))[:,-1,:]
+            classification_logits = self.classification_head(sentence_representation)
+
+            if classification_labels is not None:
+                loss_fct = nn.CrossEntropyLoss()
+                classification_loss = loss_fct(classification_logits.view(-1, self.config.num_labels), classification_labels.view(-1))
 
         ##########################
         ###     Generation     ###
@@ -158,3 +188,44 @@ class BartForExplanatoryNLI(BartPretrainedModel):
             encoder_hidden_states=outputs.encoder_hidden_states,
             encoder_attentions=outputs.encoder_attentions,
         )
+
+    def prepare_inputs_for_generation(
+        self,
+        decoder_input_ids,
+        past=None,
+        attention_mask=None,
+        head_mask=None,
+        decoder_head_mask=None,
+        cross_attn_head_mask=None,
+        use_cache=None,
+        encoder_outputs=None,
+        **kwargs
+    ):
+        # cut decoder_input_ids if past is used
+        if past is not None:
+            decoder_input_ids = decoder_input_ids[:, -1:]
+
+        return {
+            "input_ids": None,  # encoder_outputs is defined. input_ids not needed
+            "encoder_outputs": encoder_outputs,
+            "past_key_values": past,
+            "decoder_input_ids": decoder_input_ids,
+            "attention_mask": attention_mask,
+            "head_mask": head_mask,
+            "decoder_head_mask": decoder_head_mask,
+            "cross_attn_head_mask": cross_attn_head_mask,
+            "use_cache": use_cache,  # change this to avoid caching (presumably for debugging)
+        }
+
+    def prepare_decoder_input_ids_from_labels(self, labels: torch.Tensor):
+        return shift_tokens_right(labels, self.config.pad_token_id, self.config.decoder_start_token_id)
+
+    @staticmethod
+    def _reorder_cache(past, beam_idx):
+        reordered_past = ()
+        for layer_past in past:
+            # cached cross_attention states don't have to be reordered -> they are always the same
+            reordered_past += (
+                tuple(past_state.index_select(0, beam_idx) for past_state in layer_past[:2]) + layer_past[2:],
+            )
+        return reordered_past

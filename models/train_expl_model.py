@@ -1,4 +1,3 @@
-import torch
 import argparse
 from dataloaders import ANLIDataset, ESNLIDataset
 from expl_bart import BartForExplanatoryNLI
