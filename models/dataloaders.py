@@ -28,11 +28,7 @@ class ESNLIDataset(Dataset):
             batch['labels'] = torch.LongTensor(self.y_label[idx]).to(self.device)
         else:
             batch['classification_labels'] = torch.LongTensor(self.y_label[idx]).to(self.device)
-            try:
-                explanation_labels = self.tokenizer(self.y_expl[idx], padding='longest', return_tensors='pt')['input_ids']
-            except:
-                print(self.y_expl[idx])
-                0/0
+            explanation_labels = self.tokenizer(self.y_expl[idx], padding='longest', return_tensors='pt')['input_ids']
             for i in range(len(explanation_labels)):
                 if explanation_labels[i,1]==2:
                     explanation_labels[i] = -100
