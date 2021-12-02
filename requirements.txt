@@ -1,0 +1,4 @@
+--find-links https://download.pytorch.org/whl/cu113/torch_stable.html
+torch==1.10.0+cu113
+transformers==4.12.5
+pandas==1.1.5

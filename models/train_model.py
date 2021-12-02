@@ -1,9 +1,8 @@
 import torch
 import argparse
 from dataloaders import ANLIDataset, ESNLIDataset
+from expl_bart import BartForExplanatoryNLI
 from transformers import RobertaForSequenceClassification, BartForSequenceClassification, AdamW
-from os import mkdir, system
-from os.path import isdir
 from tqdm import tqdm
 from utils import evaluate
 
@@ -30,6 +29,8 @@ def train(args):
         model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3).to(args.device)
     elif args.model == 'roberta':
         model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3).to(args.device)
+    elif args.model == 'bart-expl':
+        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, alpha=args.alpha).to(args.device)
     model.train()
 
     train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.model, args.device)
@@ -63,21 +64,6 @@ def train(args):
 
             i = j
 
-@torch.no_grad()
-def get_predictions(model, dataset, batch_size):
-    model.eval()
-    preds = []
-    indices = get_iter_indices(batch_size, len(dataset))
-    for i in indices:
-        j = min(i+batch_size, len(dataset))
-        batch = dataset[i:j]
-        del batch['labels']
-        logits = model(**batch)[0]
-        preds.append(torch.argmax(logits, dim=-1).to('cpu'))
-
-    preds = torch.cat(preds)
-    return preds
-
 def main(args):
     if args.task=='train':
         train(args)
@@ -85,9 +71,10 @@ def main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='train', choices=['train', 'predict'], required=False)
-    parser.add_argument('--model', type=str, default='bart', choices=['bart', 'roberta'], required=False)
+    parser.add_argument('--model', type=str, default='bart', choices=['bart', 'roberta', 'bart-expl'], required=False)
     parser.add_argument('--dataset', type=str, default='esnli', choices=['esnli', 'anli-1', 'anli-2', 'anli-3'], required=False)
     parser.add_argument('--device', type=str, default='cuda', choices=['cpu', 'cuda'], required=False)
+    parser.add_argument('--alpha', type=float, default=0.5, required=False)
     parser.add_argument('--learning_rate', type=float, default=3e-5, required=False)
     parser.add_argument('--batch_size', type=int, default=16, required=False)
     parser.add_argument('--num_train_epochs', type=int, default=3, required=False)

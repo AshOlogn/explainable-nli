@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import torch
 from torch import nn
 from typing import Optional, Tuple
@@ -5,6 +6,7 @@ from transformers import BartPretrainedModel, BartConfig, BartModel
 from transformers.models.bart.modeling_bart import BartClassificationHead
 from transformers.modeling_outputs import ModelOutput
 
+@dataclass
 class ExplanatoryNLIOutput(ModelOutput):
     loss: Optional[torch.FloatTensor] = None
     logits: torch.FloatTensor = None
@@ -35,6 +37,8 @@ class BartForExplanatoryNLI(BartPretrainedModel):
     def __init__(self, config: BartConfig, **kwargs):
         super().__init__(config, **kwargs)
         self.model = BartModel(config)
+
+        self.alpha = kwargs['alpha']
 
         # used for classification
         self.classification_head = BartClassificationHead(
@@ -92,7 +96,6 @@ class BartForExplanatoryNLI(BartPretrainedModel):
         decoder_inputs_embeds=None,
         classification_labels=None,
         explanation_labels=None,
-        alpha=0.5,
         use_cache=None,
         output_attentions=None,
         output_hidden_states=None,
@@ -168,7 +171,7 @@ class BartForExplanatoryNLI(BartPretrainedModel):
 
         loss = None
         if classification_loss is not None and explanation_loss is not None:
-            loss = alpha * classification_loss + (1-alpha) * explanation_loss
+            loss = self.alpha * classification_loss + (1-self.alpha) * explanation_loss
         elif classification_loss is not None:
             loss = classification_loss
 
@@ -188,7 +191,6 @@ class BartForExplanatoryNLI(BartPretrainedModel):
             encoder_hidden_states=outputs.encoder_hidden_states,
             encoder_attentions=outputs.encoder_attentions,
         )
-
     def prepare_inputs_for_generation(
         self,
         decoder_input_ids,
