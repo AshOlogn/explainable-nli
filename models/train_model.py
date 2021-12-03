@@ -3,11 +3,14 @@ import argparse
 from dataloaders import ANLIDataset, ESNLIDataset
 from expl_bart import BartForExplanatoryNLI
 from transformers import RobertaForSequenceClassification, BartForSequenceClassification, AdamW
+from os import mkdir, system
+from os.path import isdir, join
 from tqdm import tqdm
 from utils import evaluate
 
 def get_dirname(args):
-    return f'trained_models/{args.model}_base_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
+    alpha_setting = f'_alpha-{args.alpha}' if args.model=='bart-expl' else ''
+    return f'trained_models/{args.model}_{args.dataset}{alpha_setting}_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
 
 def get_iter_indices(batch_size, length):
     indices = []
@@ -33,11 +36,21 @@ def train(args):
         model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, alpha=args.alpha).to(args.device)
     model.train()
 
+    dirname = get_dirname(args)
+    if args.save_model:
+        if isdir(dirname):
+            if args.overwrite_old_model_dir:
+                system(f'rm -r {dirname}')
+            else:
+                raise Exception(f'Model directory already exists, and overwriting isn\'t enabled')
+        mkdir(dirname)
+
     train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.model, args.device)
     dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.model, args.device)
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
 
+    best_acc = 0
     steps = 0
     for e in range(args.num_train_epochs):
         print("***********************")
@@ -60,6 +73,13 @@ def train(args):
                 model.eval()
                 n_f1, e_f1, c_f1, m_f1, acc = evaluate(model, dev_dataset, args.batch_size)
                 print(f'N F1 - {n_f1*100:.1f}%, E F1 - {e_f1*100:.1f}%, C F1 - {c_f1*100:.1f}, Mean F1 - {m_f1*100:.1f}, Accuracy - {acc*100:.1f}%')
+
+                if args.save_model and acc > best_acc:
+                    system(f'rm -r {dirname}/*')
+                    fname = join(dirname, f'model_epoch-{e+1}_steps-{steps}_acc-{acc*100:.1f}.pt')
+                    torch.save(model.state_dict(), fname)
+                    best_acc = acc
+
                 model.train()
 
             i = j
@@ -73,6 +93,9 @@ if __name__ == "__main__":
     parser.add_argument('--task', type=str, default='train', choices=['train', 'predict'], required=False)
     parser.add_argument('--model', type=str, default='bart', choices=['bart', 'roberta', 'bart-expl'], required=False)
     parser.add_argument('--dataset', type=str, default='esnli', choices=['esnli', 'anli-1', 'anli-2', 'anli-3'], required=False)
+    parser.add_argument("--save_model", action="store_true")
+    parser.add_argument("--overwrite_old_model_dir", action="store_true")
+    parser.add_argument('--load_path', type=str, default=None, required=False)
     parser.add_argument('--device', type=str, default='cuda', choices=['cpu', 'cuda'], required=False)
     parser.add_argument('--alpha', type=float, default=0.5, required=False)
     parser.add_argument('--learning_rate', type=float, default=3e-5, required=False)
