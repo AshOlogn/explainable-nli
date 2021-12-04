@@ -1,5 +1,7 @@
 # Custom
 a.py
+data/*
+trained_models/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
