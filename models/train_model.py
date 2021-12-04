@@ -9,9 +9,13 @@ from tqdm import tqdm
 from utils import evaluate
 
 def get_dirname(args):
-    finetune_setting = '_finetune' if args.load_path is not None else ''
-    alpha_setting = f'_alpha-{args.alpha}' if args.model=='bart-expl' else ''
-    return f'trained_models/{args.model}{finetune_setting}_{args.dataset}{alpha_setting}_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
+    dirname = f'trained_models/{args.model}'
+    dirname += '_finetune' if args.load_path is not None else ''
+    dirname += f'_{args.dataset}'
+    dirname += '_backtranslate' if args.use_backtranslation else ''
+    dirname += f'_alpha-{args.alpha}' if args.model=='bart-expl' else '' 
+    dirname += f'_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
+    return dirname
 
 def get_iter_indices(batch_size, length):
     indices = []
@@ -57,7 +61,7 @@ def train(args):
         dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.model, args.device)
     else:
         train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.use_backtranslation, args.model, args.device)
-        dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.use_backtranslation, args.model, args.device)
+        dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', False, args.model, args.device)
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
 
