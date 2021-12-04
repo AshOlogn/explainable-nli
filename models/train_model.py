@@ -23,9 +23,9 @@ def get_iter_indices(batch_size, length):
 
 DATASET_TO_CLASS = {
     'esnli': (lambda split,model,device: ESNLIDataset(split, model, device)),
-    'anli-1': (lambda split,model,device: ANLIDataset('R1', split, model, device)),
-    'anli-2': (lambda split,model,device: ANLIDataset('R2', split, model, device)),
-    'anli-3': (lambda split,model,device: ANLIDataset('R3', split, model, device))
+    'anli-1': (lambda split,backtranslate,model,device: ANLIDataset('R1', split, backtranslate, model, device)),
+    'anli-2': (lambda split,backtranslate,model,device: ANLIDataset('R2', split, backtranslate, model, device)),
+    'anli-3': (lambda split,backtranslate,model,device: ANLIDataset('R3', split, backtranslate, model, device))
 }
 
 def train(args):
@@ -38,7 +38,7 @@ def train(args):
 
     if args.load_path is not None:
         model.load_state_dict(torch.load(args.load_path))
-    
+
     model.alpha = args.alpha
     model.to(args.device)
     model.train()
@@ -52,8 +52,12 @@ def train(args):
                 raise Exception(f'Model directory already exists, and overwriting isn\'t enabled')
         mkdir(dirname)
 
-    train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.model, args.device)
-    dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.model, args.device)
+    if args.dataset == 'esnli':
+        train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.model, args.device)
+        dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.model, args.device)
+    else:
+        train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.use_backtranslation, args.model, args.device)
+        dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.use_backtranslation, args.model, args.device)
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
 
@@ -100,6 +104,7 @@ if __name__ == "__main__":
     parser.add_argument('--task', type=str, default='train', choices=['train', 'predict'], required=False)
     parser.add_argument('--model', type=str, default='bart', choices=['bart', 'roberta', 'bart-expl'], required=False)
     parser.add_argument('--dataset', type=str, default='esnli', choices=['esnli', 'anli-1', 'anli-2', 'anli-3'], required=False)
+    parser.add_argument("--use_backtranslation", action="store_true")
     parser.add_argument("--save_model", action="store_true")
     parser.add_argument("--overwrite_old_model_dir", action="store_true")
     parser.add_argument('--load_path', type=str, default=None, required=False)

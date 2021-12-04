@@ -44,8 +44,13 @@ class ESNLIDataset(Dataset):
 
 
 class ANLIDataset(Dataset):
-    def __init__(self, level, split, model, device):
+    def __init__(self, level, split, include_backtranslation, model, device):
+        if (split != 'R3' or split != 'train') and include_backtranslation:
+            raise Exception('Backtranslation augmentation only available for R3 train set')
         data = json.load(open(f'data/anli/{level}/{split}.json'))
+        if include_backtranslation:
+            for lang in ['de', 'fr', 'ru', 'zh']:
+                data.extend(json.load(open(f'data/anli/R3/augmentations/backtranslation/{lang}.json')))
         if model == 'roberta':
             self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
         elif model == 'bart' or model == 'bart-expl':
