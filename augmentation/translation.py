@@ -53,7 +53,7 @@ def augment_anli3_lang(lang, batch_size, device):
         'hypothesis': hypothesis,
         'label': label,
         'explanation': explanation
-    } for id,premise,hypothesis,label,explanation in zip(ids, labels, aug_premises, aug_hypotheses, aug_explanations)]
+    } for id,label,premise,hypothesis,explanation in zip(ids, labels, aug_premises, aug_hypotheses, aug_explanations)]
 
     if not os.path.isdir('data/anli/R3/augmentations'):
         os.mkdir('data/anli/R3/augmentations')
