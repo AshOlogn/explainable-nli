@@ -43,7 +43,7 @@ def augment_anli3_lang(lang, batch_size, device):
     hypotheses = [example['hypothesis'] for example in data]
     explanations = [example['explanation'] for example in data]
     texts = premises + hypotheses + explanations
-    aug_texts = backtranslate(texts, 'en', lang, batch_size)
+    aug_texts = backtranslate(texts, 'en', lang, batch_size, device)
     aug_premises = aug_texts[:len(data)]
     aug_hypotheses = aug_texts[len(data):2*len(data)]
     aug_explanations = aug_texts[2*len(data):]
