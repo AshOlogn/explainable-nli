@@ -9,8 +9,9 @@ from tqdm import tqdm
 from utils import evaluate
 
 def get_dirname(args):
+    finetune_setting = '_finetune' if args.load_path is not None else ''
     alpha_setting = f'_alpha-{args.alpha}' if args.model=='bart-expl' else ''
-    return f'trained_models/{args.model}_{args.dataset}{alpha_setting}_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
+    return f'trained_models/{args.model}{finetune_setting}_{args.dataset}{alpha_setting}_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
 
 def get_iter_indices(batch_size, length):
     indices = []
@@ -29,11 +30,17 @@ DATASET_TO_CLASS = {
 
 def train(args):
     if args.model == 'bart':
-        model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3).to(args.device)
+        model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3)
     elif args.model == 'roberta':
-        model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3).to(args.device)
+        model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3)
     elif args.model == 'bart-expl':
-        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, alpha=args.alpha).to(args.device)
+        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, alpha=args.alpha)
+
+    if args.load_path is not None:
+        model.load_state_dict(torch.load(args.load_path))
+    
+    model.alpha = args.alpha
+    model.to(args.device)
     model.train()
 
     dirname = get_dirname(args)

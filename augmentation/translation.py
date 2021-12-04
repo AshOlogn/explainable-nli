@@ -69,9 +69,18 @@ def augment_anli3(batch_size):
     process_de = Process(target=augment_anli3_lang, args=('de', batch_size, 'cuda:1'))
     process_ru = Process(target=augment_anli3_lang, args=('ru', batch_size, 'cuda:2'))
     process_zh = Process(target=augment_anli3_lang, args=('zh', batch_size, 'cuda:3'))
+
+    import time
+    start = time.time()
     process_fr.start()
     process_de.start()
     process_ru.start()
     process_zh.start()
+
+    process_fr.join()
+    process_de.join()
+    process_ru.join()
+    process_zh.join()
+    print(f"{time.time()-start:.1f} seconds elapsed")
 
 augment_anli3(batch_size=16)
