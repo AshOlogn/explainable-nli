@@ -78,3 +78,28 @@ def evaluate(model, dataset, batch_size, generate=False):
     n_f1, e_f1, c_f1, m_f1 =  multiclass_f1(predictions['labels'], targets)
     acc = tensor_accuracy(predictions['labels'], targets)
     return n_f1, e_f1, c_f1, m_f1, acc
+
+def output_errors(model, dataset, batch_size, generate=False):
+    predictions = get_predictions(model, dataset, batch_size, generate)
+    targets = torch.LongTensor(dataset.y_label)
+    labels = predictions['labels']
+    inputs = dataset.X
+    explanations = dataset.y_expl
+    with open("errors.txt", "w+") as f:
+        for ex_num, zipped in enumerate(zip(targets, labels, inputs, explanations)):
+            target, label, inp, expl = zipped
+            if target != label:
+                s = inp.split(' </s> ')
+                premise = s[0]
+                hypothesis = s[1]
+                t = target.item()
+                l = label.item()
+                target_str = "neutral" if t == 0 else "entailment" if t == 1 else "contradiction"
+                label_str = "neutral" if l == 0 else "entailment" if l == 1 else "contradiction"
+
+                f.write(f"Example Number: {ex_num}\n")
+                f.write(f"Premise: {premise}\n")
+                f.write(f"Hypothesis: {hypothesis}\n")
+                f.write(f"Prediction: {label_str}\n")
+                f.write(f"Actual: {target_str}\n")
+                f.write(f"Explanation: {expl}\n\n")

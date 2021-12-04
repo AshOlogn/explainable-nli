@@ -6,7 +6,7 @@ from transformers import RobertaForSequenceClassification, BartForSequenceClassi
 from os import mkdir, system
 from os.path import isdir, join
 from tqdm import tqdm
-from utils import evaluate
+from utils import evaluate, output_errors
 
 def get_dirname(args):
     dirname = f'trained_models/{args.model}'
@@ -63,6 +63,10 @@ def train(args):
         train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.use_backtranslation, args.model, args.device)
         dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', False, args.model, args.device)
 
+    if args.error_analysis:
+        output_errors(model, dev_dataset, args.batch_size)
+        return
+
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
 
     best_acc = 0
@@ -118,6 +122,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=16, required=False)
     parser.add_argument('--num_train_epochs', type=int, default=3, required=False)
     parser.add_argument('--validation_steps', type=int, default=1000, required=False)
+    parser.add_argument("--error_analysis", action="store_true")
 
     args = parser.parse_args()
     main(args)
