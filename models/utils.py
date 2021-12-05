@@ -20,7 +20,8 @@ def get_predictions(model, dataset, batch_size, generate=False):
     model.eval()
     labels = []
     gens = []
-    indices = get_iter_indices(batch_size, len(dataset))
+    #indices = get_iter_indices(batch_size, len(dataset))
+    indices = get_iter_indices(batch_size, 10)
     for i in indices:
         j = min(i+batch_size, len(dataset))
         batch = dataset[i:j]

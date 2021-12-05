@@ -11,6 +11,7 @@ class ESNLIDataset(Dataset):
             self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
         elif model == 'bart' or model == 'bart-expl':
             self.tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+        self.data = data
         self.X = [example['premise'] + ' </s> ' + example['hypothesis'] for example in data]
         self.y_expl = [example['explanation'] if split=='train' else example['explanations'][0] for example in data]
         self.y_label = [example['label'] for example in data]
@@ -55,6 +56,7 @@ class ANLIDataset(Dataset):
             self.tokenizer = RobertaTokenizer.from_pretrained('roberta-base')
         elif model == 'bart' or model == 'bart-expl':
             self.tokenizer = BartTokenizer.from_pretrained('facebook/bart-base')
+        self.data = data
         self.X = [example['premise'] + ' </s> ' + example['hypothesis'] for example in data]
         self.y_expl = [example['explanation'] for example in data]
         self.y_label = [example['label'] for example in data]

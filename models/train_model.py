@@ -3,10 +3,11 @@ import argparse
 from dataloaders import ANLIDataset, ESNLIDataset
 from expl_bart import BartForExplanatoryNLI
 from transformers import RobertaForSequenceClassification, BartForSequenceClassification, AdamW
-from os import mkdir, system
-from os.path import isdir, join
+import os
 from tqdm import tqdm
-from utils import evaluate
+from utils import evaluate, get_predictions
+from copy import deepcopy
+import json
 
 def get_dirname(args):
     dirname = f'trained_models/{args.model}'
@@ -49,12 +50,12 @@ def train(args):
 
     dirname = get_dirname(args)
     if args.save_model:
-        if isdir(dirname):
+        if os.path.isdir(dirname):
             if args.overwrite_old_model_dir:
-                system(f'rm -r {dirname}')
+                os.system(f'rm -r {dirname}')
             else:
                 raise Exception(f'Model directory already exists, and overwriting isn\'t enabled')
-        mkdir(dirname)
+        os.mkdir(dirname)
 
     if args.dataset == 'esnli':
         train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.model, args.device)
@@ -90,8 +91,8 @@ def train(args):
                 print(f'N F1 - {n_f1*100:.1f}%, E F1 - {e_f1*100:.1f}%, C F1 - {c_f1*100:.1f}, Mean F1 - {m_f1*100:.1f}, Accuracy - {acc*100:.1f}%')
 
                 if args.save_model and acc > best_acc:
-                    system(f'rm -r {dirname}/*')
-                    fname = join(dirname, f'model_epoch-{e+1}_steps-{steps}_acc-{acc*100:.1f}.pt')
+                    os.system(f'rm -r {dirname}/*')
+                    fname = os.path.join(dirname, f'model_epoch-{e+1}_steps-{steps}_acc-{acc*100:.1f}.pt')
                     torch.save(model.state_dict(), fname)
                     best_acc = acc
 
@@ -99,9 +100,50 @@ def train(args):
 
             i = j
 
+def predict(args):
+    if args.model == 'bart':
+        model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3)
+    elif args.model == 'roberta':
+        model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3)
+    elif args.model == 'bart-expl':
+        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, alpha=args.alpha)
+
+    if args.load_path is None:
+        raise Exception('Need a path to load a model for prediction')
+    else:    
+        model.load_state_dict(torch.load(args.load_path))
+
+    model.alpha = args.alpha
+    model.to(args.device)
+    model.eval()
+
+    if args.dataset == 'esnli':
+        dataset = DATASET_TO_CLASS[args.dataset](args.predict_split, args.model, args.device)
+    else:
+        dataset = DATASET_TO_CLASS[args.dataset](args.predict_split, False, args.model, args.device)
+
+    preds = get_predictions(model, dataset, args.batch_size, generate=True)
+    preds['labels'] = preds['labels'].tolist()
+
+    data = dataset.data
+    results = []
+    for i in range(len(preds['labels'])):
+        example = deepcopy(data[i])
+        example['prediction'] = preds['labels'][i]
+        if args.model == 'bart-expl':
+            example['generation'] = preds['generations'][i]
+        results.append(example)
+
+    results_fname = f'predictions_{args.dataset}_{args.predict_split}.json'
+    results_fname = os.path.join(os.path.split(args.load_path)[0], results_fname)
+    open(results_fname, 'w').write(json.dumps(results, indent=2))
+    
+
 def main(args):
     if args.task=='train':
         train(args)
+    elif args.task == 'predict':
+        predict(args)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -118,6 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=16, required=False)
     parser.add_argument('--num_train_epochs', type=int, default=3, required=False)
     parser.add_argument('--validation_steps', type=int, default=1000, required=False)
+    parser.add_argument('--predict_split', type=str, default=None, choices=['train', 'dev', 'test'], required=False)
 
     args = parser.parse_args()
     main(args)
