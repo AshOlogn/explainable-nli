@@ -10,7 +10,6 @@ from transformers.modeling_outputs import ModelOutput
 class ExplanatoryNLIOutput(ModelOutput):
     loss: Optional[torch.FloatTensor] = None
     logits: torch.FloatTensor = None
-    classification_logits: torch.FloatTensor = None
     past_key_values: Optional[Tuple[Tuple[torch.FloatTensor]]] = None
     decoder_hidden_states: Optional[Tuple[torch.FloatTensor]] = None
     decoder_attentions: Optional[Tuple[torch.FloatTensor]] = None
@@ -18,6 +17,7 @@ class ExplanatoryNLIOutput(ModelOutput):
     encoder_last_hidden_state: Optional[torch.FloatTensor] = None
     encoder_hidden_states: Optional[Tuple[torch.FloatTensor]] = None
     encoder_attentions: Optional[Tuple[torch.FloatTensor]] = None
+    classification_logits: torch.FloatTensor = None
 
 def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start_token_id: int):
     """
@@ -34,6 +34,9 @@ def shift_tokens_right(input_ids: torch.Tensor, pad_token_id: int, decoder_start
     return shifted_input_ids
 
 class BartForExplanatoryNLI(BartPretrainedModel):
+    base_model_prefix = "model"
+    _keys_to_ignore_on_load_missing = [r"final_logits_bias", r"lm_head\.weight"]
+
     def __init__(self, config: BartConfig, **kwargs):
         super().__init__(config, **kwargs)
         self.model = BartModel(config)
@@ -106,6 +109,9 @@ class BartForExplanatoryNLI(BartPretrainedModel):
         explanation_labels: (batch_size, seq_length)
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        if not return_dict:
+            raise NotImplementedError("Haven't double-checked output order if return_dict=False, currently not supported!")
+
         if classification_labels is not None or explanation_labels is not None:
             use_cache = False
 
@@ -116,17 +122,20 @@ class BartForExplanatoryNLI(BartPretrainedModel):
 
         if explanation_labels is not None:
             if decoder_input_ids is None and decoder_inputs_embeds is None:
-                decoder_input_ids = shift_tokens_right(explanation_labels, self.config.pad_token_id, self.config.decoder_start_token_id)
+                decoder_input_ids = shift_tokens_right(
+                    explanation_labels, self.config.pad_token_id, self.config.decoder_start_token_id
+                )
 
         outputs = self.model(
             input_ids,
             attention_mask=attention_mask,
             decoder_input_ids=decoder_input_ids,
+            encoder_outputs=encoder_outputs,
             decoder_attention_mask=decoder_attention_mask,
             head_mask=head_mask,
             decoder_head_mask=decoder_head_mask,
             cross_attn_head_mask=cross_attn_head_mask,
-            encoder_outputs=encoder_outputs,
+            past_key_values=past_key_values,
             inputs_embeds=inputs_embeds,
             decoder_inputs_embeds=decoder_inputs_embeds,
             use_cache=use_cache,
@@ -175,14 +184,9 @@ class BartForExplanatoryNLI(BartPretrainedModel):
         elif classification_loss is not None:
             loss = classification_loss
 
-        if not return_dict:
-            output = (classification_logits, lm_logits) + outputs[1:]
-            return ((loss,) + output) if loss is not None else output
-
         return ExplanatoryNLIOutput(
             loss=loss,
             logits=lm_logits,
-            classification_logits=classification_logits,
             past_key_values=outputs.past_key_values,
             decoder_hidden_states=outputs.decoder_hidden_states,
             decoder_attentions=outputs.decoder_attentions,
@@ -190,7 +194,9 @@ class BartForExplanatoryNLI(BartPretrainedModel):
             encoder_last_hidden_state=outputs.encoder_last_hidden_state,
             encoder_hidden_states=outputs.encoder_hidden_states,
             encoder_attentions=outputs.encoder_attentions,
+            classification_logits=classification_logits,
         )
+
     def prepare_inputs_for_generation(
         self,
         decoder_input_ids,

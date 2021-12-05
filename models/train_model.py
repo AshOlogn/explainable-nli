@@ -80,7 +80,7 @@ def train(args):
             batch = train_dataset[i:j]
             optimizer.zero_grad()
             outputs = model(**batch)
-            loss = outputs[0]
+            loss = outputs.loss
             loss.backward()
             optimizer.step()
 
