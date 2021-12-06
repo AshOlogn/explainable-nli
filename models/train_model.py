@@ -11,6 +11,7 @@ import json
 
 def get_dirname(args):
     dirname = f'trained_models/{args.model}'
+    dirname += '_reduce-mean' if args.reduce=='mean' else ''
     dirname += '_finetune' if args.load_path is not None else ''
     dirname += f'_{args.dataset}'
     dirname += '_backtranslate' if args.use_backtranslation else ''
@@ -39,7 +40,7 @@ def train(args):
     elif args.model == 'roberta':
         model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3)
     elif args.model == 'bart-expl':
-        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, alpha=args.alpha)
+        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, reduce=args.reduce, alpha=args.alpha)
 
     if args.load_path is not None:
         model.load_state_dict(torch.load(args.load_path))
@@ -149,6 +150,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--task', type=str, default='train', choices=['train', 'predict'], required=False)
     parser.add_argument('--model', type=str, default='bart', choices=['bart', 'roberta', 'bart-expl'], required=False)
+    parser.add_argument('--reduce', type=str, default='eos', choices=['eos', 'mean'], required=False)
     parser.add_argument('--dataset', type=str, default='esnli', choices=['esnli', 'anli-1', 'anli-2', 'anli-3'], required=False)
     parser.add_argument("--use_backtranslation", action="store_true")
     parser.add_argument("--save_model", action="store_true")

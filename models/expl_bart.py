@@ -41,6 +41,7 @@ class BartForExplanatoryNLI(BartPretrainedModel):
         super().__init__(config, **kwargs)
         self.model = BartModel(config)
 
+        self.reduce = kwargs['reduce']
         self.alpha = kwargs['alpha']
 
         # used for classification
@@ -156,11 +157,28 @@ class BartForExplanatoryNLI(BartPretrainedModel):
         classification_logits = None
 
         if input_ids is not None:
-            eos_mask = input_ids.eq(self.config.eos_token_id)
 
-            if len(torch.unique_consecutive(eos_mask.sum(1))) > 1:
-                raise ValueError("All examples must have the same number of <eos> tokens.")
-            sentence_representation = encoder_hidden_states[eos_mask, :].view(encoder_hidden_states.size(0), -1, encoder_hidden_states.size(-1))[:,-1,:]
+            if self.reduce == 'eos':
+                eos_mask = input_ids.eq(self.config.eos_token_id)
+                if len(torch.unique_consecutive(eos_mask.sum(1))) > 1:
+                    raise ValueError("All examples must have the same number of <eos> tokens.")
+                sentence_representation = encoder_hidden_states[eos_mask, :].view(encoder_hidden_states.size(0), -1, encoder_hidden_states.size(-1))[:,-1,:]
+
+            elif self.reduce == 'mean':
+                # (batch_size, seq_length)
+                attention_mask
+
+                # (batch_size, seq_length, hidden_size)
+                encoder_hidden_states
+
+                # (batch_size,)
+                input_lengths = attention_mask.sum(dim=1)
+
+                # (batch_size, hidden_size)
+                mean_encoder_hidden_states = (encoder_hidden_states * attention_mask.unsqueeze(-1).expand_as(encoder_hidden_states)).sum(dim=1)
+                mean_encoder_hidden_states /= input_lengths.unsqueeze(-1)
+                sentence_representation = mean_encoder_hidden_states
+
             classification_logits = self.classification_head(sentence_representation)
 
             if classification_labels is not None:
