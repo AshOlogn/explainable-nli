@@ -178,6 +178,7 @@ class BartForExplanatoryNLI(BartPretrainedModel):
                 mean_encoder_hidden_states = (encoder_hidden_states * attention_mask.unsqueeze(-1).expand_as(encoder_hidden_states)).sum(dim=1)
                 mean_encoder_hidden_states /= input_lengths.unsqueeze(-1)
                 sentence_representation = mean_encoder_hidden_states
+                print(sentence_representation.shape)
 
             classification_logits = self.classification_head(sentence_representation)
 

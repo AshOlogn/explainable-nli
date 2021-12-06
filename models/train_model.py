@@ -45,6 +45,7 @@ def train(args):
     if args.load_path is not None:
         model.load_state_dict(torch.load(args.load_path))
 
+    model.reduce = args.reduce
     model.alpha = args.alpha
     model.to(args.device)
     model.train()
@@ -107,13 +108,14 @@ def predict(args):
     elif args.model == 'roberta':
         model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3)
     elif args.model == 'bart-expl':
-        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, alpha=args.alpha)
+        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, reduce=args.reduce, alpha=args.alpha)
 
     if args.load_path is None:
         raise Exception('Need a path to load a model for prediction')
     else:    
         model.load_state_dict(torch.load(args.load_path))
 
+    model.reduce = args.reduce
     model.alpha = args.alpha
     model.to(args.device)
     model.eval()
