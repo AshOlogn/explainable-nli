@@ -1,5 +1,6 @@
 # Custom
 a.py
+out/*
 data/*
 trained_models/*
 

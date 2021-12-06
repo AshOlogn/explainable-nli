@@ -1,5 +1,6 @@
 import torch
 from expl_bart import BartForExplanatoryNLI
+from tqdm import tqdm
 
 def get_iter_indices(batch_size, length):
     indices = []
@@ -11,7 +12,7 @@ def get_iter_indices(batch_size, length):
 
 @torch.no_grad()
 def get_generations(model, batch, tokenizer):
-    output_ids = model.generate(input_ids=batch['input_ids'], max_length=50, do_sample=False, num_beams=5)
+    output_ids = model.generate(input_ids=batch['input_ids'], max_length=256, do_sample=False, num_beams=5)
     texts = [tokenizer.decode(output_ids[i], skip_special_tokens=True) for i in range(len(output_ids))]
     return texts
 
@@ -21,7 +22,7 @@ def get_predictions(model, dataset, batch_size, generate=False):
     labels = []
     gens = []
     indices = get_iter_indices(batch_size, len(dataset))
-    for i in indices:
+    for i in tqdm(indices):
         j = min(i+batch_size, len(dataset))
         batch = dataset[i:j]
         if isinstance(model, BartForExplanatoryNLI):

@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH -J train_expl_anli-3_lr-1e-5_alpha-0.5
-#SBATCH -o out/train_expl_anli-3_lr-1e-5_alpha-0.5.o%j
-#SBATCH -e out/train_expl_anli-3_lr-1e-5_alpha-0.5.e%j
+#SBATCH -J train_expl_backtranslate_anli-3_lr-1e-5_alpha-0.5
+#SBATCH -o out/train_expl_backtranslate_anli-3_lr-1e-5_alpha-0.5.o%j
+#SBATCH -e out/train_expl_backtranslate_anli-3_lr-1e-5_alpha-0.5.e%j
 #SBATCH -p gtx
 #SBATCH -N 1                    # Total number of nodes requested (16 cores/node)
 #SBATCH -n 1                    # Total number of mpi tasks requested
@@ -17,6 +17,7 @@ python -u models/train_model.py \
 --task=train \
 --model=bart-expl \
 --dataset=$DATASET \
+--use_backtranslation \
 --batch_size=$BATCH_SIZE \
 --save_model \
 --overwrite_old_model_dir \

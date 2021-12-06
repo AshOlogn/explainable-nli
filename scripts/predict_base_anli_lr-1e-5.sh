@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH -J train_base_bart_anli-3_lr-1e-5
-#SBATCH -o out/train_base_bart_anli-3_lr-1e-5.o%j
-#SBATCH -e out/train_base_bart_anli-3_lr-1e-5.e%j
+#SBATCH -J predict-dev_bart_anli_lr-1e-5
+#SBATCH -o out/predict-dev_bart_anli_lr-1e-5.o%j
+#SBATCH -e out/predict-dev_bart_anli_lr-1e-5.e%j
 #SBATCH -p gtx
 #SBATCH -N 1                    # Total number of nodes requested (16 cores/node)
 #SBATCH -n 1                    # Total number of mpi tasks requested
-#SBATCH -t 12:00:00             # Max run time (hh:mm:ss) - 72 hours
+#SBATCH -t 3:00:00             # Max run time (hh:mm:ss) - 72 hours
 #SBATCH --mail-user=ashwin.devaraj@utexas.edu
 #SBATCH --mail-type=ALL
 
@@ -14,13 +14,11 @@ export BATCH_SIZE=4
 export LR=1e-5
 
 python -u models/train_model.py \
---task=train \
+--task=predict \
+--predict_split=dev \
 --model=bart \
+--load_path=trained_models/bart_anli-3_epochs-10_bs-4_lr-1e-05/model_epoch-7_steps-172750_acc-49.8.pt \
 --dataset=$DATASET \
---save_model \
---overwrite_old_model_dir \
 --batch_size=$BATCH_SIZE \
---device=cuda \
---learning_rate=$LR \
---num_train_epochs=10 \
---validation_steps=250
+--device=cuda
+
