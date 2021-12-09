@@ -56,7 +56,7 @@ def translation_bertscores(orig_fname, trans_fname):
 
     hypotheses = []
     references = []
-    for orig,trans in zip(orig_data, trans_data):
+    for orig,trans in random.sample(list(zip(orig_data, trans_data)), 100):
         hypotheses.extend([
             trans['premise'], 
             trans['hypothesis'], 
