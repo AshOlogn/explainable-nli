@@ -1,7 +1,6 @@
 import torch
 from expl_bart import BartForExplanatoryNLI
 from tqdm import tqdm
-from dataloaders import ESNLIExplanationDataset, ANLIExplanationDataset
 
 def get_iter_indices(batch_size, length):
     indices = []
@@ -76,10 +75,7 @@ def multiclass_f1(preds, targets):
 
 def evaluate(model, dataset, batch_size, generate=False):
     predictions = get_predictions(model, dataset, batch_size, generate)
-    if isinstance(dataset, ESNLIExplanationDataset) or isinstance(dataset, ANLIExplanationDataset):
-        targets = torch.LongTensor(dataset.y)
-    else:
-        targets = torch.LongTensor(dataset.y_label)
+    targets = torch.LongTensor(dataset.y_label)
     n_f1, e_f1, c_f1, m_f1 =  multiclass_f1(predictions['labels'], targets)
     acc = tensor_accuracy(predictions['labels'], targets)
     return n_f1, e_f1, c_f1, m_f1, acc

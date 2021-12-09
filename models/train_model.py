@@ -1,9 +1,8 @@
 import torch
 import argparse
-from dataloaders import ANLIDataset, ESNLIDataset, ANLIExplanationDataset, ESNLIExplanationDataset
+from dataloaders import ANLIDataset, ESNLIDataset
 from expl_bart import BartForExplanatoryNLI
 from transformers import RobertaForSequenceClassification, BartForSequenceClassification, AdamW
-from transformers import BertTokenizer, BertForSequenceClassification
 import os
 from tqdm import tqdm
 from utils import evaluate, get_predictions
@@ -12,17 +11,12 @@ import json
 
 def get_dirname(args):
     dirname = f'trained_models/{args.model}'
+    dirname += f"_{args.model_id.replace('/', '-')}" if args.model_id is not None else ''
     dirname += '_reduce-mean' if args.reduce=='mean' else ''
     dirname += '_finetune' if args.load_path is not None else ''
     dirname += f'_{args.dataset}'
     dirname += '_backtranslate' if args.use_backtranslation else ''
     dirname += f'_alpha-{args.alpha}' if args.model=='bart-expl' else '' 
-    dirname += f'_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
-    return dirname
-
-def get_explanation_classifier_dirname(args):
-    dirname = f'trained_models/expl-classifier'
-    dirname += f'_{args.dataset}'
     dirname += f'_epochs-{args.num_train_epochs}_bs-{args.batch_size}_lr-{args.learning_rate}'
     return dirname
 
@@ -41,20 +35,16 @@ DATASET_TO_CLASS = {
     'anli-3': (lambda split,backtranslate,model,device: ANLIDataset('R3', split, backtranslate, model, device))
 }
 
-EXPLANATION_DATASET_TO_CLASS = {
-    'esnli': (lambda split,device: ESNLIExplanationDataset(split, device)),
-    'anli-1': (lambda split,device: ANLIExplanationDataset('R1', split, device)),
-    'anli-2': (lambda split,device: ANLIExplanationDataset('R2', split, device)),
-    'anli-3': (lambda split,device: ANLIExplanationDataset('R3', split, device)),
-}
-
 def train(args):
     if args.model == 'bart':
-        model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3)
+        model_id = 'facebook/bart-base' if args.model_id is None else args.model_id
+        model = BartForSequenceClassification.from_pretrained(model_id, num_labels=3)
     elif args.model == 'roberta':
-        model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3)
+        model_id = 'roberta-base' if args.model_id is None else args.model_id
+        model = RobertaForSequenceClassification.from_pretrained(model_id, num_labels=3)
     elif args.model == 'bart-expl':
-        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, reduce=args.reduce, alpha=args.alpha)
+        model_id = 'facebook/bart-base' if args.model_id is None else args.model_id
+        model = BartForExplanatoryNLI.from_pretrained(model_id, num_labels=3, reduce=args.reduce, alpha=args.alpha)
 
     if args.load_path is not None:
         model.load_state_dict(torch.load(args.load_path))
@@ -116,67 +106,16 @@ def train(args):
 
             i = j
 
-def train_explanation_classifier(args):
-    model = BertForSequenceClassification.from_pretrained('prajjwal1/bert-tiny', num_labels=3)
-    model.to(args.device)
-    model.train()
-
-    dirname = get_explanation_classifier_dirname(args)
-    if args.save_model:
-        if os.path.isdir(dirname):
-            if args.overwrite_old_model_dir:
-                os.system(f'rm -r {dirname}')
-            else:
-                raise Exception(f'Model directory already exists, and overwriting isn\'t enabled')
-        os.mkdir(dirname)
-
-    optimizer = AdamW(model.parameters(), lr=args.learning_rate)
-
-    train_dataset = EXPLANATION_DATASET_TO_CLASS[args.dataset]('train', args.device)
-    dev_dataset = EXPLANATION_DATASET_TO_CLASS[args.dataset]('dev', args.device)
-
-    best_acc = 0
-    steps = 0
-    for e in range(args.num_train_epochs):
-        print("***********************")
-        print(f"Starting epoch {e+1}...")
-        print("***********************")
-        train_dataset.shuffle()
-
-        indices = get_iter_indices(args.batch_size, len(train_dataset))
-        for i in tqdm(indices):
-            j = min(i+args.batch_size, len(train_dataset))
-            batch = train_dataset[i:j]
-            optimizer.zero_grad()
-            outputs = model(**batch)
-            loss = outputs.loss
-            loss.backward()
-            optimizer.step()
-
-            steps += 1
-            if args.validation_steps is not None and steps % (args.validation_steps)==0:
-                model.eval()
-                n_f1, e_f1, c_f1, m_f1, acc = evaluate(model, dev_dataset, args.batch_size)
-                print(f'N F1 - {n_f1*100:.1f}%, E F1 - {e_f1*100:.1f}%, C F1 - {c_f1*100:.1f}, Mean F1 - {m_f1*100:.1f}, Accuracy - {acc*100:.1f}%')
-
-                if args.save_model and acc > best_acc:
-                    os.system(f'rm -r {dirname}/*')
-                    fname = os.path.join(dirname, f'model_epoch-{e+1}_steps-{steps}_acc-{acc*100:.1f}.pt')
-                    torch.save(model.state_dict(), fname)
-                    best_acc = acc
-
-                model.train()
-
-            i = j
-
-
 def predict(args):
     if args.model == 'bart':
-        model = BartForSequenceClassification.from_pretrained('facebook/bart-base', num_labels=3)
+        model_id = 'facebook/bart-base' if args.model_id is None else args.model_id
+        model = BartForSequenceClassification.from_pretrained(model_id, num_labels=3)
     elif args.model == 'roberta':
-        model = RobertaForSequenceClassification.from_pretrained('roberta-base', num_labels=3)
+        model_id = 'roberta-base' if args.model_id is None else args.model_id
+        model = RobertaForSequenceClassification.from_pretrained(model_id, num_labels=3)
     elif args.model == 'bart-expl':
-        model = BartForExplanatoryNLI.from_pretrained('facebook/bart-base', num_labels=3, reduce=args.reduce, alpha=args.alpha)
+        model_id = 'facebook/bart-base' if args.model_id is None else args.model_id
+        model = BartForExplanatoryNLI.from_pretrained(model_id, num_labels=3, reduce=args.reduce, alpha=args.alpha)
 
     if args.load_path is None:
         raise Exception('Need a path to load a model for prediction')
@@ -208,20 +147,18 @@ def predict(args):
     results_fname = f'predictions_{args.dataset}_{args.predict_split}.json'
     results_fname = os.path.join(os.path.split(args.load_path)[0], results_fname)
     open(results_fname, 'w').write(json.dumps(results, indent=2))
-    
 
 def main(args):
     if args.task=='train':
         train(args)
     elif args.task == 'predict':
         predict(args)
-    elif args.task == 'train-expl-clf':
-        train_explanation_classifier(args)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--task', type=str, default='train', choices=['train', 'train-expl-clf', 'predict'], required=False)
-    parser.add_argument('--model', type=str, default='bart', choices=['bart', 'roberta', 'bart-expl', 'bert-expl-clf'], required=False)
+    parser.add_argument('--task', type=str, default='train', choices=['train', 'predict'], required=False)
+    parser.add_argument('--model', type=str, default='bart', choices=['bart', 'roberta', 'bart-expl'], required=False)
+    parser.add_argument("--model_id", type=str, default=None, required=False)
     parser.add_argument('--reduce', type=str, default='eos', choices=['eos', 'mean'], required=False)
     parser.add_argument('--dataset', type=str, default='esnli', choices=['esnli', 'anli-1', 'anli-2', 'anli-3'], required=False)
     parser.add_argument("--use_backtranslation", action="store_true")
