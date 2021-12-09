@@ -80,7 +80,7 @@ def bertscore_outputs(fname):
 # sentence_bert_outputs('trained_models/bart-expl_finetune_anli-3_alpha-0.5_epochs-10_bs-8_lr-1e-05/predictions_anli-3_dev.json')
 # sentence_bert_outputs('trained_models/bart-expl_anli-3_backtranslate_alpha-0.5_epochs-10_bs-4_lr-1e-05/predictions_anli-3_dev.json')
 
-bertscore_outputs('trained_models/bart_expl_esnli_alpha-0.5_epochs-3_bs-4_lr-1e-05/predictions_esnli_dev.json')
-bertscore_outputs('trained_models/bart-expl_anli-3_alpha-0.5_epochs-10_bs-4_lr-1e-05/predictions_anli-3_dev.json')
-bertscore_outputs('trained_models/bart-expl_finetune_anli-3_alpha-0.5_epochs-10_bs-8_lr-1e-05/predictions_anli-3_dev.json')
-bertscore_outputs('trained_models/bart-expl_anli-3_backtranslate_alpha-0.5_epochs-10_bs-4_lr-1e-05/predictions_anli-3_dev.json')
+# bertscore_outputs('trained_models/bart_expl_esnli_alpha-0.5_epochs-3_bs-4_lr-1e-05/predictions_esnli_dev.json')
+# bertscore_outputs('trained_models/bart-expl_anli-3_alpha-0.5_epochs-10_bs-4_lr-1e-05/predictions_anli-3_dev.json')
+# bertscore_outputs('trained_models/bart-expl_finetune_anli-3_alpha-0.5_epochs-10_bs-8_lr-1e-05/predictions_anli-3_dev.json')
+# bertscore_outputs('trained_models/bart-expl_anli-3_backtranslate_alpha-0.5_epochs-10_bs-4_lr-1e-05/predictions_anli-3_dev.json')
