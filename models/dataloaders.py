@@ -47,7 +47,7 @@ class ESNLIExplanationDataset(Dataset):
     def __init__(self, split, device):
         data = json.load(open(f'data/esnli/{split}.json'))
         self.tokenizer = BertTokenizer.from_pretrained('prajjwal1/bert-tiny')
-        self.X = [example['explanation'] for example in data]
+        self.X = [example['explanation'] if split=='train' else example['explanations'][0] for example in data]
         self.y = [example['label'] for example in data]
         self.device = device
 
@@ -58,6 +58,7 @@ class ESNLIExplanationDataset(Dataset):
         batch = self.tokenizer(self.X[idx], padding='longest', return_tensors='pt')
         batch['input_ids'] = batch['input_ids'].to(self.device)
         batch['attention_mask'] = batch['attention_mask'].to(self.device)
+        batch['token_type_ids'] = batch['token_type_ids'].to(self.device)
         batch['labels'] = torch.LongTensor(self.y[idx]).to(self.device)
         return batch
 
@@ -82,6 +83,7 @@ class ANLIExplanationDataset(Dataset):
         batch = self.tokenizer(self.X[idx], padding='longest', return_tensors='pt')
         batch['input_ids'] = batch['input_ids'].to(self.device)
         batch['attention_mask'] = batch['attention_mask'].to(self.device)
+        batch['token_type_ids'] = batch['token_type_ids'].to(self.device)
         batch['labels'] = torch.LongTensor(self.y[idx]).to(self.device)
         return batch
 

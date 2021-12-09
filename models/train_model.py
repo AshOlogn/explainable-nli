@@ -132,8 +132,8 @@ def train_explanation_classifier(args):
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate)
 
-    train_dataset = DATASET_TO_CLASS[args.dataset]('train', args.device)
-    dev_dataset = DATASET_TO_CLASS[args.dataset]('dev', args.device)
+    train_dataset = EXPLANATION_DATASET_TO_CLASS[args.dataset]('train', args.device)
+    dev_dataset = EXPLANATION_DATASET_TO_CLASS[args.dataset]('dev', args.device)
 
     best_acc = 0
     steps = 0
@@ -215,6 +215,8 @@ def main(args):
         train(args)
     elif args.task == 'predict':
         predict(args)
+    elif args.task == 'train-expl-clf':
+        train_explanation_classifier(args)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
